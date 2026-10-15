@@ -1,0 +1,22 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: podinfo-production
+  namespace: argocd
+  annotations:
+    # Maps this Argo CD Application to the Octopus project + environment (slugs)
+    argo.octopus.com/project: argo-podinfo-image-tags
+    argo.octopus.com/environment: production
+    argo.octopus.com/space: se-industry-demos
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/kamloicc/octo-demo.git
+    targetRevision: main
+    path: gitops/podinfo/overlays/production
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: podinfo-production
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }
+    syncOptions: [CreateNamespace=true]

@@ -1,0 +1,20 @@
+{
+ "FinTrust - Payments API": "fintrust-payments-api.png",
+ "FinTrust - Core Banking Database": "fintrust-core-banking-database.png",
+ "FinTrust - Fraud Scoring Model": "fintrust-fraud-scoring-model.png",
+ "MediCore - Patient Portal": "medicore-patient-portal.png",
+ "MediCore - HL7 Integration Engine": "medicore-hl7-integration-engine.png",
+ "Forge - MES Plant Services": "forge-mes-plant-services.png",
+ "Forge - Edge Firmware Rollout": "forge-edge-firmware-rollout.png",
+ "Forge - SCADA Gateway (Windows)": "forge-scada-gateway-windows.png",
+ "Cartwheel - Storefront Web": "cartwheel-storefront-web.png",
+ "Cartwheel - Inventory Service": "cartwheel-inventory-service.png",
+ "Cartwheel - Order Processing": "cartwheel-order-processing.png",
+ "CivicOne - Citizen Services Portal": "civicone-citizen-services-portal.png",
+ "CivicOne - Records Archive (Air-gapped)": "civicone-records-archive-air-gapped.png",
+ "Platform - Landing Zone Provisioning": "platform-landing-zone-provisioning.png",
+ "Platform - FinTrust Release Train": "platform-fintrust-release-train.png",
+ "Argo CD - Podinfo (Image Tags)": "argo-cd-podinfo-image-tags.png",
+ "Argo CD - Podinfo (Manifests)": "argo-cd-podinfo-manifests.png",
+ "Kubernetes - Podinfo Helm (K8s Agent)": "kubernetes-podinfo-helm-k8s-agent.png"
+}

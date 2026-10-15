@@ -1,0 +1,3 @@
+octopus_url     = "https://your-instance.octopus.app"
+octopus_api_key = "API-XXXXXXXXXXXXXXXX"
+space_name      = "SE Industry Demos"

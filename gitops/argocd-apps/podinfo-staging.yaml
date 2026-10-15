@@ -1,0 +1,22 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: podinfo-staging
+  namespace: argocd
+  annotations:
+    # Maps this Argo CD Application to the Octopus project + environment (slugs)
+    argo.octopus.com/project: argo-podinfo-image-tags
+    argo.octopus.com/environment: staging
+    argo.octopus.com/space: se-industry-demos
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/kamloicc/octo-demo.git
+    targetRevision: main
+    path: gitops/podinfo/overlays/staging
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: podinfo-staging
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }
+    syncOptions: [CreateNamespace=true]

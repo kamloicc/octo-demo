@@ -1,0 +1,9 @@
+octopus_url     = "https://your-instance.octopus.app"
+octopus_api_key = "API-XXXXXXXXXXXXXXXX"
+space_id        = "Spaces-XXX"   # from stage 00 output
+
+# Optional
+docker_hub_username       = ""
+docker_hub_token          = ""
+enable_release_train      = true
+enable_scheduled_triggers = false   # turn on after publishing runbooks
