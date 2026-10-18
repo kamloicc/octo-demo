@@ -5,4 +5,4 @@ resources:
   - ../../base
 images:
   - name: ghcr.io/stefanprodan/podinfo
-    newTag: 6.7.1   # Octopus "Update Argo CD Application Image Tags" updates this per environment
+    newTag: "6.15.0"   # Octopus "Update Argo CD Application Image Tags" updates this per environment
