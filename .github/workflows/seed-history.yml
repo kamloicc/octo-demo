@@ -1,0 +1,95 @@
+# Keeps the "SE Industry Demos" space looking alive: one release wave per weekday,
+# realistic promotion depth and a few failures. Runbooks run on Mondays.
+#
+# Repo secrets (Settings > Secrets and variables > Actions):
+#   OCTOPUS_URL      e.g. https://kamloicem.octopus.app
+#   OCTOPUS_API_KEY  a dedicated API key (e.g. "github-seed"), easy to revoke
+name: Seed demo history
+
+on:
+  schedule:
+    - cron: "0 6 * * 1-5"        # 06:00 UTC, Monday-Friday
+  workflow_dispatch:
+    inputs:
+      releases:
+        description: "Releases per project"
+        default: "1"
+      last_reaches:
+        description: "Environments the newest release reaches (2 = Dev+Test, 4 = Prod). Empty = depends on weekday"
+        default: ""
+      fail_rate:
+        description: "Share of deployments that fail (0-1)"
+        default: "0.15"
+      project:
+        description: "Only projects containing this text (empty = all)"
+        default: ""
+      exclude:
+        description: "Comma-separated text: skip matching projects (e.g. Podinfo if the cluster is off)"
+        default: ""
+      runbooks:
+        description: "Also publish + run runbooks"
+        type: boolean
+        default: false
+
+concurrency:
+  group: seed-history
+  cancel-in-progress: false
+
+jobs:
+  seed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Work out today's wave
+        id: plan
+        run: |
+          DOW=$(date -u +%u)   # 1=Mon ... 5=Fri
+          # Mon/Wed/Fri: releases go all the way to Production. Tue/Thu: stop at Test (work in progress)
+          if [ -n "${{ inputs.last_reaches }}" ]; then REACH="${{ inputs.last_reaches }}";
+          elif [ "$DOW" = "2" ] || [ "$DOW" = "4" ]; then REACH=2; else REACH=4; fi
+          RUNBOOKS="--no-runbooks"
+          if [ "${{ inputs.runbooks }}" = "true" ] || { [ "${{ github.event_name }}" = "schedule" ] && [ "$DOW" = "1" ]; }; then RUNBOOKS=""; fi
+          echo "reach=$REACH" >> "$GITHUB_OUTPUT"
+          echo "runbooks=$RUNBOOKS" >> "$GITHUB_OUTPUT"
+          echo "Wave: reach=$REACH runbooks=${RUNBOOKS:-yes}"
+
+      - name: Seed history
+        env:
+          OCTOPUS_URL: ${{ secrets.OCTOPUS_URL }}
+          OCTOPUS_API_KEY: ${{ secrets.OCTOPUS_API_KEY }}
+        run: |
+          set -o pipefail
+          python3 seed-history.py \
+            --releases "${{ inputs.releases || '1' }}" \
+            --last-reaches "${{ steps.plan.outputs.reach }}" \
+            --fail-rate "${{ inputs.fail_rate || '0.15' }}" \
+            --project "${{ inputs.project }}" \
+            --exclude "${{ inputs.exclude }}" \
+            ${{ steps.plan.outputs.runbooks }} | tee seed.log
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "## Demo history wave"
+            echo ""
+            echo "| Result | Count |"
+            echo "|---|---|"
+            echo "| OK | $(grep -c '   OK ' seed.log || true) |"
+            echo "| Failed (expected ~${{ inputs.fail_rate || '0.15' }}) | $(grep -c '   FAIL' seed.log || true) |"
+            echo "| Cancelled / timeout | $(grep -cE '   (CANC|TIMEOUT)' seed.log || true) |"
+            echo "| Script warnings | $(grep -c '   ! ' seed.log || true) |"
+            echo ""
+            echo '<details><summary>Warnings</summary>'
+            echo ""
+            echo '```'
+            grep '   ! ' seed.log | cut -c1-300 || true
+            echo '```'
+            echo '</details>'
+          } >> "$GITHUB_STEP_SUMMARY"

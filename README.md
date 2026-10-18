@@ -72,6 +72,18 @@ Region targets, 5 tenants, 3 deployment freezes.
 canary* when you deploy and you get a failure on demand. Use it for guided failure, AI failure analysis,
 Recovery Agent and rollback stories.
 
+## Fresh history every weekday (GitHub Actions)
+
+`.github/workflows/seed-history.yml` runs `seed-history.py` at 06:00 UTC Monday to Friday:
+
+- **Mon / Wed / Fri:** the new release goes all the way to Production (approvals auto-taken, ~15% failures)
+- **Tue / Thu:** the release stops at Test, so dashboards show work in progress
+- **Mondays:** runbooks are also published and run
+
+Setup: add repo secrets `OCTOPUS_URL` and `OCTOPUS_API_KEY` (use a dedicated key). Run it any time from
+**Actions > Seed demo history > Run workflow**, with options for releases, fail rate, project filter and
+exclusions (e.g. `Podinfo` when the cluster is off).
+
 ## Real infrastructure (Kubernetes agent + Argo CD)
 
 ### Kubernetes agent - fully managed by Terraform

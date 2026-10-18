@@ -381,6 +381,7 @@ def main():
     ap.add_argument("--releases", type=int, default=3, help="releases per project (default 3)")
     ap.add_argument("--fail-rate", type=float, default=0.2, help="share of deployments that fail (default 0.2)")
     ap.add_argument("--project", default="", help="only projects whose name contains this text")
+    ap.add_argument("--exclude", default="", help="comma-separated text; skip projects whose name contains any of it")
     ap.add_argument("--last-reaches", type=int, default=2,
                     help="how many environments the newest release reaches (2 = Dev+Test, 4 = up to Production)")
     ap.add_argument("--runbooks-only", action="store_true")
@@ -397,6 +398,8 @@ def main():
     ctx = Ctx(space["Id"])
     projects = [p for p in get_all(ctx.p("/projects")) if a.project.lower() in p["Name"].lower() and not p.get("IsDisabled")]
     projects = [p for p in projects if not p.get("IsVersionControlled")]  # CaC projects need a git ref; skip
+    excludes = [e.strip().lower() for e in a.exclude.split(",") if e.strip()]
+    projects = [p for p in projects if not any(e in p["Name"].lower() for e in excludes)]
     log(f"Space {space['Id']}: {len(projects)} project(s), {len(ctx.tenants)} tenant(s)")
 
     if not a.runbooks_only:
