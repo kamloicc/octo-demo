@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Tear everything down (releases/deployments created during demos are removed with the space).
 set -euo pipefail
+[ -f "$(dirname "$0")/.env" ] && set -a && . "$(dirname "$0")/.env" && set +a
 : "${OCTOPUS_URL:?}" "${OCTOPUS_API_KEY:?}"
 export TF_VAR_octopus_url="$OCTOPUS_URL" TF_VAR_octopus_api_key="$OCTOPUS_API_KEY"
 cd "$(dirname "$0")"

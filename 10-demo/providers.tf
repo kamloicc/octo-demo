@@ -43,6 +43,19 @@ variable "docker_hub_token" {
   sensitive = true
 }
 
+variable "ghcr_username" {
+  type        = string
+  default     = ""
+  description = "GitHub username for the GitHub Container Registry feed."
+}
+
+variable "ghcr_token" {
+  type        = string
+  default     = ""
+  sensitive   = true
+  description = "GitHub classic PAT with read:packages, used by the GHCR feed."
+}
+
 variable "demo_user_ids" {
   type        = list(string)
   default     = []

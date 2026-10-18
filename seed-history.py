@@ -12,6 +12,7 @@ Usage:
   export OCTOPUS_URL=https://<instance>.octopus.app OCTOPUS_API_KEY=API-xxx
   python3 seed-history.py                      # 3 releases per project, 20% failures
   python3 seed-history.py --releases 2 --fail-rate 0.3 --project Cartwheel
+  python3 seed-history.py --releases 1 --last-reaches 4 --no-runbooks   # one new wave, all the way to Prod
   python3 seed-history.py --runbooks-only
 
 Only the Python standard library is used.
@@ -187,6 +188,9 @@ def pump_interruptions(ctx):
     for it in items:
         if it.get("TaskId") not in ctx.pending:
             continue  # only answer prompts on tasks this script started
+        names = [e.get("Name") for e in (it.get("Form") or {}).get("Elements", [])]
+        if "Guidance" not in names and "Result" not in names:
+            continue  # system wait (e.g. "Wait for Argo CD Applications") - resolves by itself
         try:
             if not it.get("HasResponsibility"):
                 if not it.get("CanTakeResponsibility", True):
@@ -194,7 +198,6 @@ def pump_interruptions(ctx):
                     api("POST", f"/api/tasks/{it['TaskId']}/cancel")
                     continue
                 api("PUT", ctx.p(f"/interruptions/{it['Id']}/responsible"))
-            names = [e["Name"] for e in it.get("Form", {}).get("Elements", [])]
             vals = {"Notes": "Auto-answered by seed-history.py"}
             if "Guidance" in names:
                 vals["Guidance"] = "Fail"
@@ -253,7 +256,7 @@ def targets_for(plan, env_id):
     return out
 
 
-def seed_deployments(ctx, projects, n_releases, fail_rate):
+def seed_deployments(ctx, projects, n_releases, fail_rate, last_depth=2):
     plans = [p for p in (plan_project(ctx, pr, n_releases, fail_rate) for pr in projects) if p]
     trains = [p for p in plans if "Release Train" in p["project"]["Name"]]
     plans = [p for p in plans if p not in trains]
@@ -278,7 +281,7 @@ def seed_deployments(ctx, projects, n_releases, fail_rate):
                 ctx.pending[d["TaskId"]] = f"{pl['project']['Name']} {rel['Version']} -> {ctx.envs[d['EnvironmentId']]['Name']} (auto)"
                 auto[d["TaskId"]] = pid
 
-        depth = len(ctx.env_order) if r < n_releases else 2  # last round: Dev + Test only
+        depth = len(ctx.env_order) if r < n_releases else last_depth  # newest release stops early
         for stage in range(depth):
             wave = dict(auto) if stage == 0 else {}
             for pid, (pl, rel, alive) in rels.items():
@@ -296,6 +299,9 @@ def seed_deployments(ctx, projects, n_releases, fail_rate):
                     tid = deploy(ctx, pl["project"], rel, env_id, tenant, fail)
                     if tid:
                         wave[tid] = pid
+                    else:
+                        rels[pid] = (pl, rel, False)  # could not deploy: stop promoting this release
+                        break
             if not wave and not ctx.pending:
                 continue
             log(f"   ... waiting for {len(ctx.pending)} task(s) (stage {stage + 1})")
@@ -375,6 +381,8 @@ def main():
     ap.add_argument("--releases", type=int, default=3, help="releases per project (default 3)")
     ap.add_argument("--fail-rate", type=float, default=0.2, help="share of deployments that fail (default 0.2)")
     ap.add_argument("--project", default="", help="only projects whose name contains this text")
+    ap.add_argument("--last-reaches", type=int, default=2,
+                    help="how many environments the newest release reaches (2 = Dev+Test, 4 = up to Production)")
     ap.add_argument("--runbooks-only", action="store_true")
     ap.add_argument("--no-runbooks", action="store_true")
     ap.add_argument("--seed", type=int, default=None, help="random seed for repeatable runs")
@@ -392,7 +400,7 @@ def main():
     log(f"Space {space['Id']}: {len(projects)} project(s), {len(ctx.tenants)} tenant(s)")
 
     if not a.runbooks_only:
-        seed_deployments(ctx, projects, a.releases, a.fail_rate)
+        seed_deployments(ctx, projects, a.releases, a.fail_rate, a.last_reaches)
     if not a.no_runbooks:
         seed_runbooks(ctx, projects)
     log(f"Done. Dashboard: {URL}/app#/{ctx.s}/projects")

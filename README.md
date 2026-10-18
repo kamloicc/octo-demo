@@ -49,7 +49,7 @@ need a tweak:
 | Area | Fix |
 |---|---|
 | `Platform - FinTrust Release Train` (`Octopus.DeployRelease` step) | set `enable_release_train = false`, then add the 3 *Deploy a Release* steps in the UI |
-| Docker Hub needs a login to list tags | podinfo now comes from GitHub Container Registry; set `docker_hub_username` / `docker_hub_token` only if you add Docker Hub images |
+| Docker Hub / GHCR need a login to list tags | set `TF_VAR_ghcr_username` + `TF_VAR_ghcr_token` (GitHub classic PAT, `read:packages`) before `./deploy.sh` |
 | Tenant variable resources (V2 API) | re-run apply; they depend on the tenant to project links |
 
 ## What is where
@@ -72,32 +72,38 @@ Region targets, 5 tenants, 3 deployment freezes.
 canary* when you deploy and you get a failure on demand. Use it for guided failure, AI failure analysis,
 Recovery Agent and rollback stories.
 
-## Phase 2 - real infrastructure
+## Real infrastructure (Kubernetes agent + Argo CD)
 
-### Argo CD (project group `Kubernetes & GitOps - Argo CD`)
+### Kubernetes agent - fully managed by Terraform
 
-1. Run a cluster with Argo CD (kind / k3d is fine).
-2. The Argo CD Applications already point at `https://github.com/kamloicc/octo-demo` (`gitops/` folder). If the repo is private, add it to Argo CD with a token.
-3. In Octopus, go to **Infrastructure > Argo CD Instances > Add**, paste an Argo CD token, then run the
-   generated Helm command to install the gateway.
-4. Add a **Git credential** with a repository restriction for that repo. The Argo steps pick the
-   credential by URL.
-5. Run `kubectl apply -f gitops/argocd-apps/`. The annotations already match the Octopus slugs
-   (`argo-podinfo-image-tags` + `development|test|staging|production`, space `se-industry-demos`).
-6. In **Argo CD - Podinfo (Image Tags)**, disable the "- simulated" step and add
-   **Update Argo CD Application Image Tags** with container `stefanprodan/podinfo` from the GitHub Container Registry feed.
-   Set verification to *Argo CD Application is healthy*, and set *Pull request* for Production if you
-   want a PR-based promotion.
-7. In **Argo CD - Podinfo (Manifests)**, add **Update Argo CD Application Manifests** pointing at
-   `gitops/templates/`, then add annotations for that project too. You can generate them under
-   *Argo CD instance > Generate Scoping Annotations*.
+`Kubernetes - Podinfo Helm (K8s Agent)` deploys the podinfo Helm chart through the agent with target
+tag `k8s-podinfo` (change with `-var k8s_target_tag=...`). Each environment gets its own namespace
+`podinfo-helm-<env>`, replica count and UI colour. Environments without an agent are skipped.
+Tick *Fail the deployment step?* to push a non-existent image tag: the rollout fails for real
+(ImagePullBackOff), which shows the object status check, failure analysis and Live Status.
 
-### Kubernetes agent / Tentacles / cloud
+### Argo CD - one-time UI step per project
 
-- Install the Kubernetes agent with target tag `k8s-podinfo`, then use *Deploy a Helm Chart* with the
-  `Helm - podinfo` feed.
-- To swap a Cloud Region target for a real Tentacle / SSH / Azure / AWS target, keep the same **target
-  tag** (role). The processes don't change.
+The native Argo CD step types can't be created through the Terraform provider yet. Terraform manages the
+projects, variables and approvals, and you add the native step once in the UI. Terraform keeps steps
+added in the UI and appends them after its own steps.
+
+1. Push `gitops/` to `https://github.com/kamloicc/octo-demo` (already done if you pushed the repo).
+2. **Infrastructure > Git Credentials**: add a GitHub token with write access. Under repository
+   restrictions, allow `https://github.com/kamloicc/octo-demo.git`.
+3. `kubectl apply -f gitops/argocd-apps/` creates 4 Argo CD apps (`podinfo-<env>`) already annotated
+   with `argo-podinfo-image-tags` + the environment slugs. Check that they appear under
+   **Infrastructure > Argo CD Instances > Applications**.
+4. **Argo CD - Podinfo (Image Tags) > Process > Add step > Update Argo CD Application Image Tags**:
+   - Container image: feed **GitHub Container Registry**, package `stefanprodan/podinfo`,
+     reference name `podinfo`
+   - Commit method: direct commit for Dev/Test, *Pull request* for Production
+   - Verification: *Argo CD Application is healthy*
+5. **Argo CD - Podinfo (Manifests)**: add **Update Argo CD Application Manifests** with templates
+   path `gitops/templates`. Generate annotations for this project from
+   *Argo CD instance > Generate Scoping Annotations* and add a second set of apps if you want both demos live.
+6. Run `terraform -chdir=10-demo apply` once afterwards. Terraform should report only the
+   "appended unmanaged steps" warning.
 
 ### Live demos to do in the UI (not in Terraform, on purpose)
 

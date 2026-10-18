@@ -159,6 +159,9 @@ resource "octopusdeploy_docker_container_registry" "ghcr" {
   name        = "GitHub Container Registry"
   feed_uri    = "https://ghcr.io"
   api_version = "v2"
+  # GHCR needs a token to list tags, even for public images (classic PAT, read:packages)
+  username = var.ghcr_username != "" ? var.ghcr_username : null
+  password = var.ghcr_token != "" ? var.ghcr_token : null
 }
 resource "octopusdeploy_helm_feed" "podinfo" {
   name     = "Helm - podinfo"

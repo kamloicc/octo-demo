@@ -7,3 +7,7 @@ docker_hub_username       = ""
 docker_hub_token          = ""
 enable_release_train      = true
 enable_scheduled_triggers = false   # turn on after publishing runbooks
+
+# GitHub Container Registry (podinfo image) - classic PAT with read:packages
+ghcr_username = ""
+ghcr_token    = ""
