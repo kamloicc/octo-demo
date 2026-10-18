@@ -1,0 +1,24 @@
+# Template for the "Update Argo CD Application Manifests" step (project: argo-podinfo-manifests).
+# Octopus substitutes #{...} variables per environment and commits the result to
+# gitops/podinfo-manifests/<env>/, which the podinfo-manifests-<env> Argo CD apps sync.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: podinfo
+  labels: { app: podinfo, release: "0.0.6" }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: podinfo }
+  template:
+    metadata:
+      labels: { app: podinfo }
+    spec:
+      containers:
+        - name: podinfo
+          image: ghcr.io/stefanprodan/podinfo:6.7.1
+          env:
+            - { name: PODINFO_UI_MESSAGE, value: "Deployed by Octopus to Development - release 0.0.6" }
+            - { name: PODINFO_UI_COLOR,   value: "#34577c" }
+          ports: [{ containerPort: 9898 }]
+          readinessProbe: { httpGet: { path: /readyz, port: 9898 } }
