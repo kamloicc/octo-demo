@@ -5,7 +5,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: podinfo
-  labels: { app: podinfo, release: "0.0.13" }
+  labels: { app: podinfo, release: "0.0.14" }
 spec:
   replicas: 1
   selector:
@@ -18,7 +18,7 @@ spec:
         - name: podinfo
           image: ghcr.io/stefanprodan/podinfo:6.7.1
           env:
-            - { name: PODINFO_UI_MESSAGE, value: "Deployed by Octopus to Development - release 0.0.13" }
+            - { name: PODINFO_UI_MESSAGE, value: "Deployed by Octopus to Development - release 0.0.14" }
             - { name: PODINFO_UI_COLOR,   value: "#34577c" }
           ports: [{ containerPort: 9898 }]
           readinessProbe: { httpGet: { path: /readyz, port: 9898 } }
